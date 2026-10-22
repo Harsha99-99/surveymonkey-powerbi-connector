@@ -1,0 +1,146 @@
+{
+  "$comment": "Single source of truth for local setup on Windows. The desktop app runs exactly these commands, and test/setupSteps.test.js fails if README.md's Windows section lists different ones. Change both together.",
+  "platform": "windows",
+  "folderName": "surveymonkey-powerbi-connector",
+  "steps": [
+    {
+      "id": "tools",
+      "title": "Install the tools",
+      "summary": "The connector needs Node.js, the Azure Functions Core Tools and Git. Anything already installed is skipped. Windows may ask for permission to install.",
+      "tools": [
+        {
+          "name": "Node.js",
+          "check": "node --version",
+          "minMajor": 20,
+          "install": "winget install --id OpenJS.NodeJS.LTS -e --accept-source-agreements --accept-package-agreements"
+        },
+        {
+          "name": "Azure Functions Core Tools",
+          "check": "func --version",
+          "minMajor": 4,
+          "install": "winget install --id Microsoft.Azure.FunctionsCoreTools -e --accept-source-agreements --accept-package-agreements"
+        },
+        {
+          "name": "Git",
+          "check": "git --version",
+          "install": "winget install --id Git.Git -e --accept-source-agreements --accept-package-agreements"
+        }
+      ]
+    },
+    {
+      "id": "get-code",
+      "title": "Get the code and install dependencies",
+      "summary": "Downloads the connector into the folder you choose and installs what it needs. If it is already there, the download is skipped.",
+      "cwd": "parent",
+      "commands": [
+        "git clone https://github.com/Harsha99-99/surveymonkey-powerbi-connector.git",
+        "cd surveymonkey-powerbi-connector",
+        "npm ci"
+      ]
+    },
+    {
+      "id": "settings",
+      "title": "Create your local settings file",
+      "summary": "Creates local.settings.json and fills in your SurveyMonkey token and the surveys to sync. The token is stored only in that file, which is never uploaded.",
+      "commands": [
+        "Copy-Item local.settings.json.example local.settings.json"
+      ],
+      "settings": [
+        {
+          "key": "SECRETS_BACKEND",
+          "value": "local-override"
+        },
+        {
+          "key": "SM_ACCESS_TOKEN_SECRET_NAME",
+          "value": "surveymonkey-access-token"
+        },
+        {
+          "key": "SM_ACCESS_TOKEN_LOCAL_OVERRIDE",
+          "input": "token"
+        },
+        {
+          "key": "KEY_VAULT_URI",
+          "value": ""
+        },
+        {
+          "key": "STORAGE_ACCOUNT_URL",
+          "value": ""
+        },
+        {
+          "key": "STORAGE_CONNECTION_STRING",
+          "value": "UseDevelopmentStorage=true"
+        },
+        {
+          "key": "SYNC_SURVEY_IDS",
+          "input": "surveyIds"
+        }
+      ]
+    },
+    {
+      "id": "azurite",
+      "title": "Start the storage emulator",
+      "summary": "Starts a local stand-in for Azure Storage. It keeps running in the background until you close this app.",
+      "commands": [
+        "npm run azurite"
+      ],
+      "background": true,
+      "readyPort": 10000
+    },
+    {
+      "id": "function",
+      "title": "Start the connector",
+      "summary": "Starts the connector on this computer. It keeps running in the background until you close this app.",
+      "commands": [
+        "npm start"
+      ],
+      "background": true,
+      "readyUrl": "http://localhost:7071/api/health"
+    },
+    {
+      "id": "check",
+      "title": "Check it works",
+      "summary": "Asks the connector whether it is healthy, whether your token works, and which surveys it can see.",
+      "commands": [
+        "curl.exe http://localhost:7071/api/health",
+        "curl.exe http://localhost:7071/api/setup/status",
+        "curl.exe http://localhost:7071/api/surveys"
+      ],
+      "verify": "setup-status"
+    },
+    {
+      "id": "sync",
+      "title": "Sync a survey and read it back",
+      "summary": "Pulls each chosen survey's responses and reads the result back, so you can see the data is there.",
+      "perSurvey": true,
+      "commands": [
+        "curl.exe -X POST http://localhost:7071/api/sync/<survey-id>",
+        "curl.exe http://localhost:7071/api/surveys/<survey-id>/status",
+        "curl.exe \"http://localhost:7071/api/surveys/<survey-id>/data/answers\""
+      ],
+      "verify": "sync"
+    },
+    {
+      "id": "wizard",
+      "title": "Open the setup wizard",
+      "summary": "Opens the connector's own wizard in your browser. Its last step gives you the URLs and the query to paste into Power BI Desktop.",
+      "open": "http://localhost:7071/api/ui#power-bi",
+      "note": "Already set up here? If you synced a survey in the step above, the browser opens straight at Connect Power BI, so you can skip its earlier steps. The browser wizard is also how you manage the connector later, from any browser: change which surveys sync, turn on history, or run a sync."
+    }
+  ],
+  "actions": {
+    "export": {
+      "title": "Save tables as CSV files",
+      "summary": "Saves each table of the chosen surveys as a CSV file in your data folder, one survey-<id> folder per survey. Every export replaces the previous files.",
+      "command": "npm run export -- --survey <survey-id> --out \"<folder>\""
+    },
+    "update": {
+      "title": "Update the connector",
+      "summary": "Downloads the latest published version of the connector into your install folder and reinstalls what it needs. Your settings and synced data are kept.",
+      "commands": [
+        "git restore package-lock.json",
+        "git pull --ff-only",
+        "npm ci"
+      ]
+    }
+  }
+}

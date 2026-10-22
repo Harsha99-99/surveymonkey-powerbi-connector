@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SurveyMonkey → Power BI</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="top">
+    <div>
+      <h1>SurveyMonkey → Power BI</h1>
+      <p class="muted">Set up the connector, save your data and connect Power BI. Every step runs the same commands as the README.</p>
+    </div>
+    <div class="services">
+      <span id="svc-azurite" class="chip">Storage emulator: stopped</span>
+      <span id="svc-function" class="chip">Connector: stopped</span>
+    </div>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="Screens">
+    <button role="tab" class="tab" data-view="setup" aria-selected="true">1. Setup</button>
+    <button role="tab" class="tab" data-view="data" aria-selected="false">2. Data and CSV files</button>
+    <button role="tab" class="tab" data-view="powerbi" aria-selected="false">3. Power BI</button>
+    <button role="tab" class="tab" data-view="refresh" aria-selected="false">4. Scheduled refresh</button>
+  </nav>
+
+  <main>
+    <!-- 1. Setup -------------------------------------------------------------->
+    <section id="view-setup" class="view layout" role="tabpanel">
+      <nav aria-label="Setup steps" class="side">
+        <ol id="step-list" class="steps"></ol>
+        <button id="run-all" class="primary wide">Run all remaining steps</button>
+        <p class="hint">Closing this window stops the storage emulator and the connector, unless "keep running" is on.</p>
+        <p class="credit">Created by Harshadeep Nallamothu<br>Open source under the MIT License</p>
+      </nav>
+
+      <section class="panel" aria-live="polite">
+        <div class="folder">
+          <span class="label">Install folder</span>
+          <code id="folder">…</code>
+          <button id="choose-folder" class="ghost small">Change…</button>
+        </div>
+        <p id="folder-onedrive" class="hint warn-text" hidden></p>
+        <p id="step-number" class="eyebrow"></p>
+        <h2 id="step-title"></h2>
+        <p id="step-summary" class="muted"></p>
+        <p id="step-note" class="note" hidden></p>
+
+        <div id="step-inputs"></div>
+
+        <h3>Commands this step runs</h3>
+        <pre id="step-commands" class="commands"></pre>
+
+        <div class="actions">
+          <button id="run-step" class="primary">Run this step</button>
+          <button id="next-step" class="ghost">Next step →</button>
+        </div>
+        <p id="step-result" class="result" role="status"></p>
+      </section>
+    </section>
+
+    <!-- 2. Data and CSV files ----------------------------------------------------->
+    <section id="view-data" class="view" role="tabpanel" hidden>
+      <div id="data-banner"></div>
+
+      <div class="cards two">
+        <article class="card">
+          <h2>CSV files</h2>
+          <p class="muted">Every table saved as a normal CSV file, one folder per survey. Open them in Excel, or point Power BI's Folder connector at them.</p>
+          <div class="path-row">
+            <span class="label">Folder</span>
+            <code id="export-folder">…</code>
+            <button id="change-export-folder" class="ghost small">Change…</button>
+            <button id="open-export-folder" class="ghost small">Open</button>
+          </div>
+          <p id="export-onedrive" class="hint warn-text" hidden>This folder is in OneDrive, so the CSV files, including survey responses, are uploaded to OneDrive. If that isn't allowed for your survey data, choose a folder outside OneDrive.</p>
+          <label class="check">
+            <input type="checkbox" id="auto-export">
+            <span>Save CSV files automatically after every sync, including the connector's scheduled syncs while this app is running</span>
+          </label>
+          <div class="actions">
+            <button id="export-all" class="primary">Save CSV files now</button>
+          </div>
+          <p class="hint">Runs <code id="export-command"></code></p>
+          <p id="export-result" class="result" role="status"></p>
+        </article>
+
+        <article class="card">
+          <h2>Where the connector keeps your data</h2>
+          <p class="muted">The connector stores synced tables in the local storage emulator, in this folder. Those files are in the emulator's own format and aren't meant to be opened. Use the CSV files instead.</p>
+          <div class="path-row">
+            <code id="storage-folder">…</code>
+            <button id="open-storage-folder" class="ghost small">Open</button>
+          </div>
+          <p id="storage-onedrive" class="hint warn-text" hidden>This is inside OneDrive, because the connector is installed there. Synced survey data is uploaded to OneDrive. To move it, change the install folder in Setup and run the setup steps again.</p>
+          <p class="hint">Power BI reads the tables from the connector's web addresses, which you'll find on the Power BI screen.</p>
+        </article>
+      </div>
+
+      <article class="card">
+        <h2>Your surveys</h2>
+        <table class="grid">
+          <thead>
+            <tr><th>Survey</th><th>Last synced</th><th>Responses</th><th>CSV files</th><th></th></tr>
+          </thead>
+          <tbody id="survey-rows"></tbody>
+        </table>
+        <p id="survey-result" class="result" role="status"></p>
+      </article>
+    </section>
+
+    <!-- 3. Power BI ---------------------------------------------------------------->
+    <section id="view-powerbi" class="view" role="tabpanel" hidden>
+      <div id="pbi-banner"></div>
+
+      <article class="card">
+        <div class="fields">
+          <label class="field-inline">
+            <span class="label">Survey</span>
+            <select id="pbi-survey"></select>
+          </label>
+          <label class="field-inline">
+            <span class="label">Data</span>
+            <select id="pbi-snapshot"></select>
+          </label>
+          <fieldset class="field-inline">
+            <legend class="label">Format</legend>
+            <label class="radio"><input type="radio" name="pbi-format" value="csv" checked> CSV</label>
+            <label class="radio"><input type="radio" name="pbi-format" value="json"> JSON</label>
+          </fieldset>
+        </div>
+        <p id="pbi-status" class="muted"></p>
+        <p id="pbi-hint" class="hint"></p>
+      </article>
+
+      <article class="card">
+        <h2>Tables</h2>
+        <div class="actions tight">
+          <button id="pick-full" class="ghost small">Full model (5 tables)</button>
+          <button id="pick-flat" class="ghost small">Just the flat table</button>
+        </div>
+        <ul id="pbi-tables" class="table-list"></ul>
+      </article>
+
+      <article class="card" id="pbi-preview-card" hidden>
+        <h2 id="pbi-preview-title"></h2>
+        <div class="preview-wrap"><table id="pbi-preview" class="grid"></table></div>
+        <p id="pbi-preview-note" class="hint"></p>
+      </article>
+
+      <article class="card">
+        <h2>Connect Power BI Desktop</h2>
+        <ol class="guide">
+          <li>In Power BI Desktop, choose <b>Get data</b> → <b>Blank query</b>.</li>
+          <li>Choose <b>Advanced Editor</b>, delete what's there, paste one table's query from below, and choose <b>Done</b>.</li>
+          <li>In <b>Query settings</b>, rename the query to the table's name, for example <code>answers</code>.</li>
+          <li>Repeat for each table, then choose <b>Close &amp; Apply</b>.</li>
+          <li id="pbi-relationships-step" hidden>In <b>Model</b> view, create these relationships, all one-to-many, filtering from the first table into the second:
+            <ul id="pbi-relationships" class="plain"></ul>
+          </li>
+        </ol>
+        <div id="pbi-queries"></div>
+
+        <h3>Useful measures</h3>
+        <p class="hint">In Power BI Desktop, choose <b>New measure</b> on the answers table and paste one at a time.</p>
+        <pre id="pbi-measures" class="commands"></pre>
+        <div class="actions tight" id="pbi-measures-actions"></div>
+        <p class="hint">Next: <button class="link" data-goto-view="refresh">set up scheduled refresh</button>.</p>
+      </article>
+    </section>
+
+    <!-- 4. Scheduled refresh ------------------------------------------------------->
+    <section id="view-refresh" class="view" role="tabpanel" hidden>
+      <article class="card">
+        <h2>Scheduled refresh from this PC</h2>
+        <p class="muted">Power BI's cloud service can't reach this PC by itself. Microsoft's free on-premises data gateway, running here, fetches the data for it. So at refresh times this PC must be on, awake and signed in to Windows, with the connector running.</p>
+
+        <ol class="guide">
+          <li>
+            <b>Keep the connector running.</b> It only syncs from SurveyMonkey, on its schedule, while it's running.
+            <label class="check">
+              <input type="checkbox" id="keep-running">
+              <span>Start with Windows and keep running in the background, with an icon by the clock</span>
+            </label>
+            <p id="keep-running-note" class="hint"></p>
+            <p id="sync-times" class="hint"></p>
+          </li>
+          <li>
+            <b>Stop the PC sleeping at refresh times.</b> In Windows Settings → System → Power, set the PC to never sleep while plugged in, or at least not around your refresh times.
+          </li>
+          <li>
+            <b>Install the gateway in personal mode.</b> Download it, run the installer, choose <b>On-premises data gateway (personal mode)</b>, and sign in with the account you use for Power BI. It doesn't need administrator rights. Each person can run only one personal gateway.
+            <div class="actions tight"><button id="open-gateway" class="ghost small">Download the gateway</button></div>
+          </li>
+          <li>
+            <b>Publish your report.</b> In Power BI Desktop, choose <b>Home</b> → <b>Publish</b> and pick a workspace.
+          </li>
+          <li>
+            <b>Connect the semantic model to the gateway.</b> In the Power BI service, open the workspace, find the semantic model, and open its <b>Settings</b>. Under <b>Gateway and cloud connections</b>, choose your personal gateway. It shows as online while it's running.
+            <div class="actions tight"><button id="open-powerbi" class="ghost small">Open the Power BI service</button></div>
+          </li>
+          <li>
+            <b>Set the data source credentials.</b> Under <b>Data source credentials</b>, edit the credentials for <code>http://localhost:7071</code>: choose <b>Anonymous</b>, privacy level <b>Organizational</b>, and tick <b>Skip test connection</b>. The queries from this app keep the address fixed, which is what lets the service refresh them.
+          </li>
+          <li>
+            <b>Turn on scheduled refresh.</b> Under <b>Refresh</b>, turn on the refresh schedule, choose your time zone and add times. <span id="refresh-times"></span> Power BI Pro allows up to 8 refreshes a day; Premium Per User and Premium capacity allow 48.
+          </li>
+          <li>
+            <b>Test it.</b> Choose <b>Refresh now</b> on the semantic model and check its refresh history. After four failed refreshes in a row, Power BI turns the schedule off, so check back after the first scheduled one.
+          </li>
+        </ol>
+      </article>
+
+      <article class="card">
+        <h2>Scheduled refresh from Azure (later)</h2>
+        <p class="muted">Once the connector is deployed to Azure, Power BI refreshes from it directly. No gateway, and no PC has to stay on.</p>
+        <ol class="guide">
+          <li>Deploy the connector with the <b>Deploy to Azure</b> button in the README, and finish its setup wizard.</li>
+          <li>Use your Function App's address in place of <code>http://localhost:7071</code> in the queries, and add the function key header, as shown in <code>docs/powerbi.md</code>.</li>
+          <li>In the semantic model's <b>Data source credentials</b>, choose <b>Anonymous</b> and tick <b>Skip test connection</b>. The key travels in the header.</li>
+          <li>Set refresh times. On Azure the connector's schedule is in UTC unless <code>WEBSITE_TIME_ZONE</code> is set, so allow for that when you line up refreshes after syncs.</li>
+        </ol>
+      </article>
+    </section>
+  </main>
+
+  <footer class="activity">
+    <div class="activity-head">
+      <h3>Output</h3>
+      <button id="clear-output" class="ghost small">Clear</button>
+    </div>
+    <pre id="output" class="terminal" tabindex="0" aria-label="Command output" aria-live="polite"></pre>
+  </footer>
+
+  <script src="common.js"></script>
+  <script src="setup.js"></script>
+  <script src="data.js"></script>
+  <script src="powerbi.js"></script>
+  <script src="refresh.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

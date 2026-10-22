@@ -10,8 +10,9 @@
  * same command works on every platform.
  *
  * Usage:
- *   node scripts/runTests.js                 offline unit tests
- *   node scripts/runTests.js --integration   also runs storage tests against Azurite
+ *   node scripts/runTests.js                    offline unit tests
+ *   node scripts/runTests.js --integration      also runs storage tests against Azurite
+ *   node scripts/runTests.js --dir desktop/test runs another folder's tests
  */
 
 const fs = require('node:fs');
@@ -19,13 +20,19 @@ const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 
 const root = path.join(__dirname, '..');
-const testDir = path.join(root, 'test');
+const dirFlag = process.argv.indexOf('--dir');
+const relativeDir = dirFlag !== -1 ? process.argv[dirFlag + 1] : 'test';
+if (!relativeDir) {
+  console.error('--dir needs a folder, for example --dir desktop/test');
+  process.exit(1);
+}
+const testDir = path.join(root, relativeDir);
 
 const files = fs
   .readdirSync(testDir)
   .filter((name) => name.endsWith('.test.js'))
   .sort()
-  .map((name) => path.join('test', name));
+  .map((name) => path.join(relativeDir, name));
 
 if (files.length === 0) {
   console.error(`No *.test.js files found in ${testDir}`);

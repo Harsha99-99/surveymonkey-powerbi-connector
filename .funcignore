@@ -12,3 +12,4 @@ node_modules/.bin
 infra/
 azuredeploy.json
 public/**/*.map
+desktop/

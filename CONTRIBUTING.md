@@ -106,6 +106,44 @@ plain `npm test` stays offline.
 is a local test emulator and is never deployed; `npm audit --omit=dev` (what
 matters for a deployment) is clean.
 
+### Windows setup app
+
+The point-and-click setup app lives in `desktop/` and is built with Electron.
+It runs the commands listed in `desktop/steps/windows.json`, and nothing else.
+
+**That file and the README's "Windows (PowerShell)" section must change
+together.** `test/setupSteps.test.js` fails if their commands, settings table
+or wizard URL differ, so the app and the documented command-line path always
+produce the same result.
+
+To run the app from source:
+
+```bash
+cd desktop
+npm install
+npm start
+```
+
+If you start it from a VS Code terminal and it behaves like plain Node, unset
+`ELECTRON_RUN_AS_NODE` first. VS Code sets it for its own processes.
+
+`npm run dist` builds the installer into `desktop/dist/`. The release workflow
+builds it on Windows and attaches it to each release as
+`SurveyMonkey-PowerBI-Setup.exe`, which the README links to.
+
+The step logic in `desktop/src/core/` is plain Node with no Electron imports, so
+`node scripts/runTests.js --dir desktop/test` runs anywhere.
+
+Besides the setup steps, the manifest has `actions`: commands the app runs from
+its other screens, such as the CSV export. They follow the same rule, and
+`test/setupSteps.test.js` checks the README documents each one. The same test
+checks that `desktop/src/core/tables.js` lists the same columns and types as
+the connector's `src/lib/schema.js`, which the packaged app can't load.
+
+To run a second copy alongside an installed one, or to test without touching
+your own app settings, point `SMPBI_USER_DATA` at an empty folder before
+starting it.
+
 ### Azure Functions Core Tools
 
 Core Tools is **not** a project dependency — install it

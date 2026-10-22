@@ -616,7 +616,12 @@
 
     initTabs();
     goTo(1);
-    refreshStatus();
+
+    // #power-bi skips straight to Connect Power BI once a survey has synced,
+    // for people who finished setup elsewhere, such as the desktop setup app.
+    refreshStatus().then(function () {
+      if (location.hash === '#power-bi' && state.syncedIds.length > 0) goTo(4);
+    });
   }
 
   if (document.readyState === 'loading') {

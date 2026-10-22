@@ -7,6 +7,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-10-22
+
+### Added
+
+- **Windows desktop app.** `SurveyMonkey-PowerBI-Setup.exe`, attached to each
+  release, sets the connector up on a Windows PC without typing commands, then
+  helps run it day to day. It has four screens:
+  - **Setup:** installs Node.js, the Functions Core Tools and Git if missing,
+    downloads the connector, writes `local.settings.json` (with a survey picker,
+    so nobody has to look up survey IDs), starts the storage emulator and the
+    connector, checks the token and runs a first sync.
+  - **Data and CSV files:** sync each survey, and save its tables as CSV files
+    into a folder you choose, by hand or automatically after every sync.
+  - **Power BI:** pick a survey, the latest data or a snapshot, CSV or JSON,
+    and the tables you want; preview them; copy each table's URL and a
+    ready-made Power Query that sets the column types.
+  - **Scheduled refresh:** a guide for refreshing in the Power BI service from
+    this PC through the on-premises data gateway (personal mode), with
+    suggested refresh times, and an option to start the connector with Windows
+    and keep it running from the system tray.
+
+  The app runs exactly the commands in the README's Windows section, listed in
+  `desktop/steps/windows.json`. `test/setupSteps.test.js` fails if the two
+  drift apart, so the app and the command-line path always give the same
+  result. The installer is not code-signed yet, so Windows shows a SmartScreen
+  warning on first run.
+- **CSV export.** `npm run export -- --survey <survey-id> --out "<folder>"`
+  saves every table as a CSV file, one `survey-<id>` folder per survey, from
+  the same URLs Power BI reads. `--snapshot` exports a dated snapshot.
+- **Open the wizard at the Power BI step.** `/api/ui#power-bi` jumps straight
+  to Connect Power BI once a survey has synced.
+- README sections on saving CSV files and updating to the latest version.
+
+### Changed
+
+- **Skipped questions now produce rows. This changes the output data.**
+  SurveyMonkey leaves a skipped question out of a response entirely, so the
+  `is_skipped = true` row was never written and completion rates were
+  overstated. A question missing from a completed response now counts as
+  skipped, as long as the response was collected after the survey last
+  changed. Expect more `answers` rows, and lower, accurate completion rates,
+  in existing reports.
+- Installs use `npm ci` rather than `npm install`, which rewrote
+  `package-lock.json` in fresh clones and could block a later `git pull`.
+- The README's local quickstart is laid out by operating system, with local
+  setup ahead of Azure deployment.
+
+### Fixed
+
+- `npm test` and `npm run test:integration` work on Windows.
+- The setup wizard at `/api/ui` loads its styles and script. Before, it
+  rendered unstyled and its buttons did nothing.
+- The wizard's snapshot section gives a usable URL for each snapshot.
+
+## [1.1.0] - 2026-08-17
+
 ### Added
 
 - **Rate-limit handling.** Requests to SurveyMonkey now retry on 429 and 5xx
