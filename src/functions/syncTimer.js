@@ -6,7 +6,9 @@ const { makeLogger } = require('../lib/logger');
 /**
  * Timer-triggered sync.
  *
- * Runs on the schedule in the SYNC_SCHEDULE app setting (NCRONTAB, UTC),
+ * Runs on the schedule in the SYNC_SCHEDULE app setting (NCRONTAB). On Azure
+ * that is UTC, because the Linux Consumption plan has no time-zone setting;
+ * run locally with Core Tools, it is the computer's own time zone. It
  * defaulting to every six hours. This is the only thing that talks to
  * SurveyMonkey on a schedule; Power BI reads the synced files, so refresh
  * frequency in Power BI has no effect on SurveyMonkey API usage.

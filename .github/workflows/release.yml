@@ -11,12 +11,12 @@ permissions:
 jobs:
   release:
     name: Build and publish the deployment package
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: npm
@@ -40,7 +40,7 @@ jobs:
             -x '*.test.js'
 
       - name: Publish the release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: surveymonkey-powerbi-connector.zip
           generate_release_notes: true
@@ -51,9 +51,9 @@ jobs:
     needs: release
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: npm
@@ -81,6 +81,6 @@ jobs:
       # A fixed file name, so the README can link to
       # releases/latest/download/SurveyMonkey-PowerBI-Setup.exe.
       - name: Attach the installer to the release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: desktop/dist/SurveyMonkey-PowerBI-Setup.exe

@@ -6,7 +6,8 @@
  *
  * Run locally by Azure Functions Core Tools, the schedule is in this PC's local
  * time: the host reports "0 0 0,6,12,18 * * *" firing at 12:00-04:00 on an
- * Eastern-time machine. On Azure it is UTC unless WEBSITE_TIME_ZONE is set.
+ * Eastern-time machine. On Azure it is UTC: the Linux Consumption plan this
+ * project deploys has no time-zone setting.
  *
  * Only daily patterns are understood (fixed second and minute; hours as *,
  * a list, a range or a step; every day). Anything else returns null and the

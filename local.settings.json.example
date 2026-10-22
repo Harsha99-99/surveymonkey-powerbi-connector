@@ -21,7 +21,7 @@
     "STORAGE_CONNECTION_STRING": "UseDevelopmentStorage=true",
     "STORAGE_CONTAINER": "survey-data",
 
-    "_comment_sync": "SYNC_SCHEDULE is an NCRONTAB expression in UTC and must be set, since the timer trigger reads it by name. The default below is every 6 hours. Leave SYNC_SURVEY_IDS empty to sync every survey the token can see, or list specific IDs comma-separated to stay well inside SurveyMonkey's daily API quota.",
+    "_comment_sync": "SYNC_SCHEDULE is an NCRONTAB expression and must be set, since the timer trigger reads it by name. Run locally, it follows this computer's time zone. On Azure it is UTC: the Linux Consumption plan this project deploys has no time-zone setting, so don't set WEBSITE_TIME_ZONE or TZ there. The default below is every 6 hours. Leave SYNC_SURVEY_IDS empty to sync every survey the token can see, or list specific IDs comma-separated to stay well inside SurveyMonkey's daily API quota.",
     "SYNC_SCHEDULE": "0 0 */6 * * *",
     "SYNC_SURVEY_IDS": "",
     "SYNC_RESPONSE_STATUS": "completed",
