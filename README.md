@@ -99,27 +99,185 @@ the reasoning behind it.
 
 ## Quickstart (local)
 
+Run the connector on your own machine before you deploy it. There are two ways to do this:
+
+- **No Azure resources (recommended for testing).** Your SurveyMonkey token goes in a local settings file, and synced data is written to a local storage emulator (Azurite). You need no Azure subscription.
+- **With Azure Key Vault.** Your token is read from a real Key Vault using your `az login` identity. Use this to test the same path a deployed Function takes.
+
+The steps below use the no-Azure path. Key Vault setup is at the end of this section.
+
+Before you start, make sure you have everything from [Prerequisites](#prerequisites). Run `node --version` and `func --version` to confirm.
+
+### Windows (PowerShell)
+
+Run these in PowerShell. Use `curl.exe` rather than `curl`, because in PowerShell `curl` is an alias for a different command.
+
+**1. Get the code and install dependencies**
+
+```powershell
+git clone https://github.com/Harsha99-99/surveymonkey-powerbi-connector.git
+cd surveymonkey-powerbi-connector
+npm install
+```
+
+**2. Create your local settings file**
+
+```powershell
+Copy-Item local.settings.json.example local.settings.json
+```
+
+Open `local.settings.json` and set these values under `Values`:
+
+| Setting | Value |
+|---|---|
+| `SECRETS_BACKEND` | `local-override` |
+| `SM_ACCESS_TOKEN_SECRET_NAME` | `surveymonkey-access-token` (leave as is) |
+| `SM_ACCESS_TOKEN_LOCAL_OVERRIDE` | your SurveyMonkey access token |
+| `KEY_VAULT_URI` | empty |
+| `STORAGE_ACCOUNT_URL` | empty (if set, it takes precedence over the emulator) |
+| `STORAGE_CONNECTION_STRING` | `UseDevelopmentStorage=true` |
+| `SYNC_SURVEY_IDS` | comma-separated survey IDs to sync. Empty syncs every survey the token can see. |
+
+> **Warning:** `local.settings.json` is git-ignored. Never commit it, and never put a real token in `local.settings.json.example`.
+
+**3. Start the storage emulator** (terminal 1, leave it running)
+
+```powershell
+npm run azurite
+```
+
+**4. Start the Function** (terminal 2, leave it running)
+
+```powershell
+npm start
+```
+
+Wait until the console lists the function routes before you send requests.
+
+**5. Check it works** (terminal 3)
+
+```powershell
+curl.exe http://localhost:7071/api/health
+curl.exe http://localhost:7071/api/setup/status
+curl.exe http://localhost:7071/api/surveys
+```
+
+**6. Sync a survey and read it back**
+
+```powershell
+curl.exe -X POST http://localhost:7071/api/sync/<survey-id>
+curl.exe http://localhost:7071/api/surveys/<survey-id>/status
+curl.exe "http://localhost:7071/api/surveys/<survey-id>/data/answers"
+```
+
+Before the first sync, the `data/answers` request returns `404 not_synced`. That's expected.
+
+**7. Optional: open the setup wizard**
+
+Open `http://localhost:7071/api/ui` in your browser.
+
+### macOS and Linux
+
+**1. Get the code and install dependencies**
+
 ```bash
 git clone https://github.com/Harsha99-99/surveymonkey-powerbi-connector.git
 cd surveymonkey-powerbi-connector
 npm install
 ```
 
-Copy the settings template and set your Key Vault URI:
+**2. Create your local settings file**
 
 ```bash
 cp local.settings.json.example local.settings.json
 ```
 
-Edit `KEY_VAULT_URI` to point at your vault. **This file is gitignored —
-never commit it.**
+Open `local.settings.json` and set the same values as in the Windows table above.
 
-Grant yourself Key Vault access (one-time, needs vault admin rights):
+> **Warning:** `local.settings.json` is git-ignored. Never commit it, and never put a real token in `local.settings.json.example`.
+
+**3. Start the storage emulator** (terminal 1, leave it running)
 
 ```bash
-az keyvault set-policy --name <your-vault-name> \
-  --upn <your-email> \
-  --secret-permissions get list set
+npm run azurite
+```
+
+**4. Start the Function** (terminal 2, leave it running)
+
+```bash
+npm start
+```
+
+Wait until the console lists the function routes before you send requests.
+
+**5. Check it works** (terminal 3)
+
+```bash
+curl http://localhost:7071/api/health
+curl http://localhost:7071/api/setup/status
+curl http://localhost:7071/api/surveys
+```
+
+**6. Sync a survey and read it back**
+
+```bash
+curl -X POST http://localhost:7071/api/sync/<survey-id>
+curl http://localhost:7071/api/surveys/<survey-id>/status
+curl "http://localhost:7071/api/surveys/<survey-id>/data/answers"
+```
+
+Before the first sync, the `data/answers` request returns `404 not_synced`. That's expected.
+
+**7. Optional: open the setup wizard**
+
+Open `http://localhost:7071/api/ui` in your browser.
+
+### Running the tests locally
+
+The offline tests need no setup. The integration tests need Azurite running.
+
+**Offline unit tests** (any platform):
+
+```bash
+npm test
+```
+
+**Integration tests against Azurite** (any platform, with `npm run azurite` running in another terminal):
+
+```bash
+npm run test:integration
+```
+
+The integration suite should report 0 skipped. If it reports skipped tests, the storage emulator isn't running or `STORAGE_CONNECTION_STRING` isn't set.
+
+Tests cover the transformation logic using fixture JSON — no network calls and
+no Azure dependency, so they run anywhere. The transform is the part most
+likely to need adjustment as real survey data reveals edge cases, so it has
+the tightest coverage.
+
+### Troubleshooting
+
+- **`npm` is blocked by "running scripts is disabled" on Windows.** Use `npm.cmd` in place of `npm`, for example `npm.cmd install`, or run `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`.
+- **`/api/surveys/<id>/data/...` returns 404 `not_synced`.** Run the sync step (step 6) first.
+- **`/api/surveys` returns 502 `surveymonkey_token_invalid`.** The token in `SM_ACCESS_TOKEN_LOCAL_OVERRIDE` is wrong or has been revoked. Create a new token in the SurveyMonkey developer portal and update the setting, then restart `npm start`.
+- **Power BI Desktop shows "unable to retrieve the contents of the web page."** Use the Blank query method with `Web.Contents` shown in [docs/powerbi.md](docs/powerbi.md). The plain "Web page" connector expects HTML, not CSV.
+
+### Using Azure Key Vault instead
+
+Use this path to test the same secret handling a deployed Function uses. You need an Azure subscription and `az login`.
+
+Copy the settings file and set `KEY_VAULT_URI` to your vault:
+
+```bash
+cp local.settings.json.example local.settings.json
+```
+
+On Windows PowerShell, use `Copy-Item` instead of `cp`.
+
+Grant your account access to the vault (one-time, needs vault admin rights). This is one line, so it works in both shells:
+
+```bash
+az keyvault set-policy --name <your-vault-name> --upn <your-email> --secret-permissions get list set
 ```
 
 Store your SurveyMonkey access token:
@@ -129,51 +287,28 @@ npm run setup-oauth -- --store-token     # you already have a token
 npm run setup-oauth -- --full-flow       # or walk the OAuth flow
 ```
 
-Start the local storage emulator in one terminal:
+Then follow steps 3 to 7 from your platform's section above. Leave `SECRETS_BACKEND` at its default of `keyvault`.
 
-```bash
-npm run azurite
-```
+## Deploying to Azure
 
-and the Function in another:
+1. Create a Function App with a System-Assigned Managed Identity enabled.
+2. Grant that identity `get` and `list` permissions on your Key Vault secrets.
+3. Grant that same identity the **Storage Blob Data Contributor** role on the
+   storage account the sync writes to.
+4. Set the application settings — `KEY_VAULT_URI`, `SM_API_BASE_URL`,
+   `SM_ACCESS_TOKEN_SECRET_NAME`, `SECRETS_BACKEND=keyvault`,
+   `STORAGE_ACCOUNT_URL`, `STORAGE_CONTAINER`, and `SYNC_SCHEDULE`.
+   `local.settings.json.example` documents every setting and its default.
+5. Deploy: `func azure functionapp publish <app-name>`.
+6. Trigger a first sync with `POST /api/sync` (admin key) rather than waiting
+   for the timer.
+7. Get the function key from the portal (Function App → App keys) and use it
+   as the Power BI credential.
 
-```bash
-npm start
-```
+`SYNC_SCHEDULE` must be set — the timer trigger reads it by name, so the
+Function App won't start without it.
 
-Then check it works:
-
-```bash
-curl http://localhost:7071/api/health
-curl http://localhost:7071/api/surveys
-
-# sync a survey, then read it back
-curl -X POST http://localhost:7071/api/sync/<survey-id>
-curl http://localhost:7071/api/surveys/<survey-id>/status
-curl http://localhost:7071/api/surveys/<survey-id>/data/answers
-```
-
-Function keys aren't enforced when running locally, so no key is needed here.
-
-### Running with no Azure resources at all
-
-You can exercise the whole pipeline without a Key Vault or a storage account —
-useful for development and for trying the project out. In
-`local.settings.json`:
-
-```jsonc
-"SECRETS_BACKEND": "local-override",
-"SM_ACCESS_TOKEN_LOCAL_OVERRIDE": "<your SurveyMonkey token>",
-"STORAGE_ACCOUNT_URL": "",                          // must be empty
-"STORAGE_CONNECTION_STRING": "UseDevelopmentStorage=true"
-```
-
-The only thing you still need is a real SurveyMonkey token, since that's the
-actual upstream. `local-override` is a development-only path that logs a loud
-warning and must never be enabled in a deployment.
-
-Leave `STORAGE_ACCOUNT_URL` empty — when it's set it takes precedence, and the
-Azurite connection string is ignored.
+A one-click "Deploy to Azure" button with a Bicep template is on the roadmap.
 
 ## The setup wizard
 
@@ -266,38 +401,6 @@ Power BI Service — see **[`docs/powerbi.md`](docs/powerbi.md)**.
 
 Supply the key as a header rather than in the URL so it isn't stored in plain
 text in the query string.
-
-## Deploying to Azure
-
-1. Create a Function App with a System-Assigned Managed Identity enabled.
-2. Grant that identity `get` and `list` permissions on your Key Vault secrets.
-3. Grant that same identity the **Storage Blob Data Contributor** role on the
-   storage account the sync writes to.
-4. Set the application settings — `KEY_VAULT_URI`, `SM_API_BASE_URL`,
-   `SM_ACCESS_TOKEN_SECRET_NAME`, `SECRETS_BACKEND=keyvault`,
-   `STORAGE_ACCOUNT_URL`, `STORAGE_CONTAINER`, and `SYNC_SCHEDULE`.
-   `local.settings.json.example` documents every setting and its default.
-5. Deploy: `func azure functionapp publish <app-name>`.
-6. Trigger a first sync with `POST /api/sync` (admin key) rather than waiting
-   for the timer.
-7. Get the function key from the portal (Function App → App keys) and use it
-   as the Power BI credential.
-
-`SYNC_SCHEDULE` must be set — the timer trigger reads it by name, so the
-Function App won't start without it.
-
-A one-click "Deploy to Azure" button with a Bicep template is on the roadmap.
-
-## Running tests
-
-```bash
-npm test
-```
-
-Tests cover the transformation logic using fixture JSON — no network calls and
-no Azure dependency, so they run anywhere. The transform is the part most
-likely to need adjustment as real survey data reveals edge cases, so it has
-the tightest coverage.
 
 ## Current limitations
 
