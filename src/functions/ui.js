@@ -35,6 +35,27 @@ const CONTENT_TYPES = {
   '.woff2': 'font/woff2',
 };
 
+// The page's stylesheet and script are inlined into index.html rather than
+// fetched. The asset URLs are relative, so from /api/ui they resolve to
+// /api/styles.css and /api/app.js, which do not exist, and on Azure the browser
+// would not send ?code= with those requests either.
+const INLINE_ASSETS = [
+  { tag: '<link rel="stylesheet" href="styles.css">', file: 'styles.css', wrap: (css) => `<style>\n${css}\n</style>` },
+  { tag: '<script src="app.js"></script>', file: 'app.js', wrap: (js) => `<script>\n${js}\n</script>` },
+];
+
+async function inlineAssets(html) {
+  let out = html;
+  for (const { tag, file, wrap } of INLINE_ASSETS) {
+    if (!out.includes(tag)) continue;
+    const content = await fs.readFile(path.join(PUBLIC_DIR, file), 'utf8');
+    // The replacer is a function so `$` sequences in the asset are not
+    // interpreted as replacement patterns.
+    out = out.replace(tag, () => wrap(content));
+  }
+  return out;
+}
+
 app.http('ui', {
   methods: ['GET'],
   authLevel: 'admin',
@@ -58,6 +79,10 @@ app.http('ui', {
       if (err.code === 'ENOENT' || err.code === 'EISDIR') return notFound();
       log.error('Failed to read wizard asset', { errorName: err.name });
       return { status: 500, body: 'Could not read the requested file.' };
+    }
+
+    if (path.basename(filePath) === 'index.html') {
+      body = await inlineAssets(body.toString('utf8'));
     }
 
     return {

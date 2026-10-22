@@ -3,10 +3,11 @@
  * API rather than in-memory fakes.
  *
  * These are skipped unless STORAGE_CONNECTION_STRING is set, so the default
- * `npm test` stays offline and dependency-free. To run them:
+ * `npm test` stays offline and dependency-free. To run them, start Azurite in
+ * one terminal and then run the integration script in another:
  *
- *   npx azurite-blob --location /tmp/azurite --blobPort 10000 &
- *   STORAGE_CONNECTION_STRING=UseDevelopmentStorage=true npm test
+ *   npm run azurite
+ *   npm run test:integration
  *
  * They exist because the unit tests substitute an in-memory store for
  * blobStore, which means nothing else verifies that the real SDK calls,

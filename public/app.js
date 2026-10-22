@@ -17,6 +17,9 @@
   var KEY = new URLSearchParams(location.search).get('code') || '';
   var state = { surveys: [], selected: new Set(), syncedIds: [] };
 
+  // Retention can keep months of daily snapshots; list only the newest few.
+  var SNAPSHOTS_SHOWN = 5;
+
   // The key arrives in the URL because that is the only way Azure lets the
   // browser load this page at all. Once read, it is scrubbed from the address
   // bar so the master key does not sit in browser history, get copied when
@@ -466,10 +469,34 @@
       container.appendChild(tableOfUrls(info.tables));
 
       if (info.snapshots && info.snapshots.length > 0) {
+        var shown = info.snapshots.slice(0, SNAPSHOTS_SHOWN);
         container.appendChild(el('h3', null, 'Snapshots available'));
         container.appendChild(
-          el('p', 'muted', info.snapshots.join(', ') + ' — add ?snapshot=DATE to any table URL.')
+          el(
+            'p',
+            'muted',
+            'A snapshot is a frozen copy of every table on that date. To read one, add ' +
+              '?snapshot=YYYY-MM-DD to any table URL above. For the flat table:'
+          )
         );
+        container.appendChild(
+          tableOfUrls(
+            shown.map(function (date) {
+              return { table: date, url: withSnapshot(info.quick_start.url, date) };
+            }),
+            'Date'
+          )
+        );
+        if (info.snapshots.length > shown.length) {
+          container.appendChild(
+            el(
+              'p',
+              'muted',
+              (info.snapshots.length - shown.length) + ' older snapshots are also available, back to ' +
+                info.snapshots[info.snapshots.length - 1] + '.'
+            )
+          );
+        }
       }
     } catch (err) {
       container.innerHTML = '';
@@ -501,10 +528,14 @@
     return wrapper;
   }
 
-  function tableOfUrls(tables) {
+  function withSnapshot(url, date) {
+    return url + (url.indexOf('?') === -1 ? '?' : '&') + 'snapshot=' + encodeURIComponent(date);
+  }
+
+  function tableOfUrls(tables, firstHeading) {
     var table = el('table');
     var head = el('tr');
-    head.appendChild(el('th', null, 'Table'));
+    head.appendChild(el('th', null, firstHeading || 'Table'));
     head.appendChild(el('th', null, 'URL'));
     table.appendChild(head);
 

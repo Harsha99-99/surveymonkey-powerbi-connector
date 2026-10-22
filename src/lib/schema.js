@@ -27,6 +27,8 @@
  * keeps both the choice it belongs to and the text the respondent typed.
  */
 
+const { inferSkippedQuestionIds } = require('./skippedQuestions');
+
 /** Question subtypes whose free-text answers are genuinely numbers. */
 const NUMERIC_SUBTYPES = new Set(['numerical']);
 
@@ -78,10 +80,14 @@ function buildTables(surveyDetails, responses = [], opts = {}) {
 
   const responseRows = [];
   const answerRows = [];
+  const inference = {
+    surveyModifiedAt: surveyDetails.date_modified,
+    questionOrder: questions.map((q) => q.question_id),
+  };
 
   for (const response of responses) {
     responseRows.push(buildResponseRow(response, surveyId, snapshotDate));
-    appendAnswerRows(response, surveyId, snapshotDate, questionIndex, labelIndex, answerRows);
+    appendAnswerRows(response, surveyId, snapshotDate, questionIndex, labelIndex, answerRows, inference);
   }
 
   const surveyRow = {
@@ -177,10 +183,12 @@ function buildResponseRow(response, surveyId, snapshotDate) {
  *   answers: [...]  -> one row each
  *   answers: []     -> ONE row with null values, so a deliberate skip stays
  *                      countable and completion rates stay honest
- *   question absent -> nothing, because the question did not exist when this
- *                      response was collected
+ *   absent from the payload -> SurveyMonkey omits skipped questions, so a
+ *                      completed response that lacks a question gets the same
+ *                      skipped row, when skipped-questions.js judges absence
+ *                      to mean a skip. Anything else gets nothing.
  */
-function appendAnswerRows(response, surveyId, snapshotDate, questionIndex, labelIndex, out) {
+function appendAnswerRows(response, surveyId, snapshotDate, questionIndex, labelIndex, out, inference) {
   for (const page of response.pages || []) {
     for (const question of page.questions || []) {
       const meta = questionIndex[question.id];
@@ -194,17 +202,7 @@ function appendAnswerRows(response, surveyId, snapshotDate, questionIndex, label
       };
 
       if (!answers || answers.length === 0) {
-        out.push({
-          ...base,
-          choice_id: null,
-          row_id: null,
-          col_id: null,
-          row_text: null,
-          value_text: null,
-          value_numeric: null,
-          other_text: null,
-          is_skipped: true,
-        });
+        out.push(skippedAnswerRow(base));
         continue;
       }
 
@@ -213,6 +211,36 @@ function appendAnswerRows(response, surveyId, snapshotDate, questionIndex, label
       }
     }
   }
+
+  const skippedIds = inferSkippedQuestionIds(
+    response,
+    inference.surveyModifiedAt,
+    inference.questionOrder
+  );
+  for (const questionId of skippedIds) {
+    out.push(
+      skippedAnswerRow({
+        survey_id: surveyId,
+        response_id: response.id,
+        question_id: questionId,
+        snapshot_date: snapshotDate,
+      })
+    );
+  }
+}
+
+function skippedAnswerRow(base) {
+  return {
+    ...base,
+    choice_id: null,
+    row_id: null,
+    col_id: null,
+    row_text: null,
+    value_text: null,
+    value_numeric: null,
+    other_text: null,
+    is_skipped: true,
+  };
 }
 
 /**
