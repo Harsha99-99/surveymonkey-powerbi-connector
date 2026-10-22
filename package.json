@@ -25,8 +25,8 @@
   },
   "scripts": {
     "start": "func start",
-    "test": "node --test test/*.test.js",
-    "test:integration": "STORAGE_CONNECTION_STRING=UseDevelopmentStorage=true node --test test/*.test.js",
+    "test": "node scripts/runTests.js",
+    "test:integration": "node scripts/runTests.js --integration",
     "azurite": "azurite --location .azurite --skipApiVersionCheck",
     "setup-oauth": "node scripts/setupOAuth.js"
   },
