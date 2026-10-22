@@ -1,0 +1,52 @@
+{
+  "name": "surveymonkey-powerbi-setup",
+  "productName": "SurveyMonkey Power BI Connector",
+  "version": "1.2.0",
+  "description": "Point-and-click local setup for the SurveyMonkey to Power BI connector. Runs the same steps as the README.",
+  "main": "src/main.js",
+  "private": true,
+  "license": "MIT",
+  "author": "Harshadeep Nallamothu",
+  "homepage": "https://github.com/Harsha99-99/surveymonkey-powerbi-connector#readme",
+  "scripts": {
+    "start": "electron .",
+    "smoke": "electron . --smoke-test",
+    "test": "node ../scripts/runTests.js --dir desktop/test",
+    "dist": "electron-builder --win --publish never"
+  },
+  "build": {
+    "appId": "io.github.harsha99-99.surveymonkey-powerbi-setup",
+    "productName": "SurveyMonkey Power BI Connector",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "steps/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/icon.png"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "artifactName": "SurveyMonkey-PowerBI-Setup.${ext}",
+      "shortcutName": "SurveyMonkey Power BI Connector"
+    },
+    "copyright": "Copyright © 2026 Harshadeep Nallamothu"
+  },
+  "devDependencies": {
+    "electron": "^45.0.0",
+    "electron-builder": "^26.15.3"
+  }
+}

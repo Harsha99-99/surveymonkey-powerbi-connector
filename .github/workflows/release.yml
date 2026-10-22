@@ -44,3 +44,43 @@ jobs:
         with:
           files: surveymonkey-powerbi-connector.zip
           generate_release_notes: true
+
+  desktop:
+    name: Build and publish the Windows setup app
+    runs-on: windows-latest
+    needs: release
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+
+      - name: Install the setup app's dependencies
+        working-directory: desktop
+        run: npm ci
+
+      - name: Setup app tests
+        run: node scripts/runTests.js --dir desktop/test
+
+      - name: Build the Windows installer
+        working-directory: desktop
+        run: npm run dist
+
+      # Starts the packaged app hidden, checks its page loaded every step, and exits.
+      - name: Smoke-test the packaged app
+        working-directory: desktop
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath "dist/win-unpacked/SurveyMonkey Power BI Connector.exe" -ArgumentList '--smoke-test' -PassThru -Wait
+          if ($p.ExitCode -ne 0) { throw "Smoke test failed with exit code $($p.ExitCode)" }
+
+      # A fixed file name, so the README can link to
+      # releases/latest/download/SurveyMonkey-PowerBI-Setup.exe.
+      - name: Attach the installer to the release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: desktop/dist/SurveyMonkey-PowerBI-Setup.exe

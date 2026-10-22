@@ -28,7 +28,8 @@
     "test": "node scripts/runTests.js",
     "test:integration": "node scripts/runTests.js --integration",
     "azurite": "azurite --location .azurite --skipApiVersionCheck",
-    "setup-oauth": "node scripts/setupOAuth.js"
+    "setup-oauth": "node scripts/setupOAuth.js",
+    "export": "node scripts/exportTables.js"
   },
   "dependencies": {
     "@azure/functions": "^4.5.0",

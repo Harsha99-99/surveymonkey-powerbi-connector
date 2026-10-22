@@ -14,6 +14,8 @@ and credentials never leave your infrastructure.
 
 [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FHarsha99-99%2Fsurveymonkey-powerbi-connector%2Fmaster%2Fazuredeploy.json)
 
+**Windows app:** [download SurveyMonkey-PowerBI-Setup.exe](https://github.com/Harsha99-99/surveymonkey-powerbi-connector/releases/latest/download/SurveyMonkey-PowerBI-Setup.exe) to set the connector up on a PC without typing commands. See [Windows setup app](#windows-setup-app-no-terminal-needed).
+
 > **Status: early development, but usable end to end.** Deploy with the button
 > above, finish setup in the built-in browser wizard, and connect Power BI.
 > Remaining work is polish and a tagged release — see
@@ -108,16 +110,40 @@ The steps below use the no-Azure path. Key Vault setup is at the end of this sec
 
 Before you start, make sure you have everything from [Prerequisites](#prerequisites). Run `node --version` and `func --version` to confirm.
 
+### Windows setup app (no terminal needed)
+
+If you would rather not type commands, download **[SurveyMonkey-PowerBI-Setup.exe](https://github.com/Harsha99-99/surveymonkey-powerbi-connector/releases/latest/download/SurveyMonkey-PowerBI-Setup.exe)** and run it. It walks through the Windows steps below with one button per step, and shows each command and its output as it runs. The result is the same as typing the commands yourself.
+
+- It installs for your user account only. Installing Node.js, the Functions tools or Git may still ask Windows for permission.
+- The installer is not code-signed yet, so Windows may say "Windows protected your PC". Choose **More info**, then **Run anyway**.
+- Closing the app stops the storage emulator and the connector, unless you turn on **keep running** (see below).
+
+After setup, the app has three more screens:
+
+- **Data and CSV files:** sync each survey, and save every table as CSV files into a folder you choose, by hand or automatically after every sync. It runs the same `npm run export` command described in [Save tables as CSV files](#save-tables-as-csv-files), and its **Update the connector** button runs the commands in [Update to the latest version](#update-to-the-latest-version).
+- **Power BI:** pick a survey, the latest data or a dated snapshot, CSV or JSON, and the tables you want. Preview each table, then copy its URL and a ready-made Power Query that sets the column types. It also lists the relationships and measures from [docs/powerbi.md](docs/powerbi.md).
+- **Scheduled refresh:** a step-by-step guide for refreshing in the Power BI service from this PC through Microsoft's on-premises data gateway (personal mode), with suggested refresh times based on the connector's sync schedule. In the installed app you can turn on **keep running**, which starts the connector with Windows and keeps it running from an icon by the clock. A section covers refreshing from Azure, later.
+
 ### Windows (PowerShell)
 
 Run these in PowerShell. Use `curl.exe` rather than `curl`, because in PowerShell `curl` is an alias for a different command.
+
+**0. Install the tools** (anything already installed is skipped)
+
+```powershell
+winget install --id OpenJS.NodeJS.LTS -e --accept-source-agreements --accept-package-agreements
+winget install --id Microsoft.Azure.FunctionsCoreTools -e --accept-source-agreements --accept-package-agreements
+winget install --id Git.Git -e --accept-source-agreements --accept-package-agreements
+```
+
+Close and reopen PowerShell afterwards, so it finds the new tools.
 
 **1. Get the code and install dependencies**
 
 ```powershell
 git clone https://github.com/Harsha99-99/surveymonkey-powerbi-connector.git
 cd surveymonkey-powerbi-connector
-npm install
+npm ci
 ```
 
 **2. Create your local settings file**
@@ -174,7 +200,7 @@ Before the first sync, the `data/answers` request returns `404 not_synced`. That
 
 **7. Optional: open the setup wizard**
 
-Open `http://localhost:7071/api/ui` in your browser.
+Open `http://localhost:7071/api/ui#power-bi` in your browser. If you synced a survey in step 6, it opens straight at **Connect Power BI**, so you can skip the wizard's earlier steps. Otherwise it starts at the beginning. The wizard is also how you manage the connector later, from any browser: change which surveys sync, turn on history, or run a sync.
 
 ### macOS and Linux
 
@@ -183,7 +209,7 @@ Open `http://localhost:7071/api/ui` in your browser.
 ```bash
 git clone https://github.com/Harsha99-99/surveymonkey-powerbi-connector.git
 cd surveymonkey-powerbi-connector
-npm install
+npm ci
 ```
 
 **2. Create your local settings file**
@@ -230,7 +256,52 @@ Before the first sync, the `data/answers` request returns `404 not_synced`. That
 
 **7. Optional: open the setup wizard**
 
-Open `http://localhost:7071/api/ui` in your browser.
+Open `http://localhost:7071/api/ui#power-bi` in your browser. If you synced a survey in step 6, it opens straight at **Connect Power BI**, so you can skip the wizard's earlier steps. Otherwise it starts at the beginning. The wizard is also how you manage the connector later, from any browser: change which surveys sync, turn on history, or run a sync.
+
+### Save tables as CSV files
+
+Once a survey has synced, you can save its tables as ordinary CSV files, to open in Excel or to read with Power BI's Folder connector. With the connector running:
+
+**Windows (PowerShell)**
+
+```powershell
+npm run export -- --survey <survey-id> --out "<folder>"
+```
+
+**macOS and Linux**
+
+```bash
+npm run export -- --survey <survey-id> --out "<folder>"
+```
+
+Replace `<folder>` with where the files should go, such as `C:\Users\you\Documents\SurveyMonkey data`. For several surveys, separate the IDs with commas.
+
+- Each survey gets its own `survey-<id>` folder, with one CSV per table and an `about.txt` naming the survey and when it last synced.
+- Every export replaces the previous files. If one is open in Excel, the export stops and says which file to close.
+- Add `--snapshot 2026-10-22` to save a dated snapshot instead, into `survey-<id>\snapshot-2026-10-22`.
+- The Windows setup app can do this for you after every sync, into a folder you choose.
+
+### Update to the latest version
+
+To pick up a newer version of the connector later, run these in the connector folder, then restart `npm start`.
+
+**Windows (PowerShell)**
+
+```powershell
+git restore package-lock.json
+git pull --ff-only
+npm ci
+```
+
+**macOS and Linux**
+
+```bash
+git restore package-lock.json
+git pull --ff-only
+npm ci
+```
+
+`git restore package-lock.json` undoes the changes an older `npm install` may have made to that file, which would otherwise stop `git pull`. Your `local.settings.json` and synced data aren't touched. The Windows setup app does the same with its **Update the connector** button.
 
 ### Running the tests locally
 
@@ -250,6 +321,12 @@ npm run test:integration
 
 The integration suite should report 0 skipped. If it reports skipped tests, the storage emulator isn't running or `STORAGE_CONNECTION_STRING` isn't set.
 
+**Windows setup app tests** (any platform, no install needed):
+
+```bash
+node scripts/runTests.js --dir desktop/test
+```
+
 Tests cover the transformation logic using fixture JSON — no network calls and
 no Azure dependency, so they run anywhere. The transform is the part most
 likely to need adjustment as real survey data reveals edge cases, so it has
@@ -257,6 +334,7 @@ the tightest coverage.
 
 ### Troubleshooting
 
+- **The Windows setup app opens to an empty window for a while.** On some PCs, security software checks each new app process before it runs, so the first screen can take 10 to 30 seconds to appear. The title bar says "Starting…" until it does.
 - **`npm` is blocked by "running scripts is disabled" on Windows.** Use `npm.cmd` in place of `npm`, for example `npm.cmd install`, or run `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`.
 - **`/api/surveys/<id>/data/...` returns 404 `not_synced`.** Run the sync step (step 6) first.
 - **`/api/surveys` returns 502 `surveymonkey_token_invalid`.** The token in `SM_ACCESS_TOKEN_LOCAL_OVERRIDE` is wrong or has been revoked. Create a new token in the SurveyMonkey developer portal and update the setting, then restart `npm start`.
