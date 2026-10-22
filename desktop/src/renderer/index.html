@@ -220,7 +220,7 @@
           <li>Deploy the connector with the <b>Deploy to Azure</b> button in the README, and finish its setup wizard.</li>
           <li>Use your Function App's address in place of <code>http://localhost:7071</code> in the queries, and add the function key header, as shown in <code>docs/powerbi.md</code>.</li>
           <li>In the semantic model's <b>Data source credentials</b>, choose <b>Anonymous</b> and tick <b>Skip test connection</b>. The key travels in the header.</li>
-          <li>Set refresh times. On Azure the connector's schedule is in UTC unless <code>WEBSITE_TIME_ZONE</code> is set, so allow for that when you line up refreshes after syncs.</li>
+          <li>Set refresh times. On Azure the connector's schedule is always in UTC, so convert to your time zone when you line up refreshes after syncs. Don't set <code>WEBSITE_TIME_ZONE</code> or <code>TZ</code>: the plan this project deploys doesn't support them, and setting them causes errors.</li>
         </ol>
       </article>
     </section>
