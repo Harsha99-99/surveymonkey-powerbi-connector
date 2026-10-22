@@ -17,10 +17,13 @@
  *                                    Emit ONE row with answer_value: null so
  *                                    the skip is visible and the response
  *                                    still counts toward completion totals.
- *   3. question absent from this response entirely -> the question didn't
- *      exist yet when this response was collected (added to the survey
- *      later). Emit nothing — there is nothing true to say about it.
+ *   3. question absent from this response entirely -> SurveyMonkey omits
+ *      skipped questions, so this is treated as a skip when skipped-questions.js
+ *      judges it reliable (completed response, collected after the survey's
+ *      last change). Otherwise emit nothing.
  */
+
+const { inferSkippedQuestionIds } = require('./skippedQuestions');
 
 function flattenResponse(response, surveyMeta, lookups, snapshotDate) {
   const { questionMap, choiceMap } = lookups;
@@ -65,6 +68,19 @@ function flattenResponse(response, surveyMeta, lookups, snapshotDate) {
         });
       }
     }
+  }
+
+  const skippedIds = inferSkippedQuestionIds(response, surveyMeta.date_modified, lookups.questionOrder || []);
+  for (const questionId of skippedIds) {
+    const qInfo = questionMap[questionId] || { text: null, type: null };
+    rows.push({
+      ...base,
+      question_id: questionId,
+      question_text: qInfo.text,
+      question_type: qInfo.type,
+      answer_value: null,
+      choice_id: null,
+    });
   }
 
   return rows;

@@ -25,9 +25,11 @@ const cache = new Map(); // surveyId -> { lookups, fetchedAt }
 function buildLookups(surveyDetails) {
   const questionMap = {};
   const choiceMap = {};
+  const questionOrder = [];
 
   for (const page of surveyDetails.pages || []) {
     for (const q of page.questions || []) {
+      questionOrder.push(q.id);
       questionMap[q.id] = {
         text: q.headings && q.headings[0] ? q.headings[0].heading : '',
         type: q.family || 'unknown',
@@ -42,7 +44,16 @@ function buildLookups(surveyDetails) {
     }
   }
 
-  return { questionMap, choiceMap, surveyMeta: { id: surveyDetails.id, title: surveyDetails.title } };
+  return {
+    questionMap,
+    choiceMap,
+    questionOrder,
+    surveyMeta: {
+      id: surveyDetails.id,
+      title: surveyDetails.title,
+      date_modified: surveyDetails.date_modified,
+    },
+  };
 }
 
 /**
